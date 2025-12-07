@@ -78,7 +78,7 @@ export const Room: React.FC = () => {
   };
 
   const handleLeaveRoom = () => {
-    if (window.confirm('هل تريد مغادرة الغرفة؟')) {
+    if (window.confirm('هل تريد مغادرة الغرفة وحذف سجلك منها؟')) {
        leaveRoom();
        setIsUserSettingsOpen(false);
        navigate(AppRoute.HOME);
@@ -323,11 +323,15 @@ export const Room: React.FC = () => {
           {/* Progress Bar */}
           {hasTarget && (
             <div className="mx-4 pt-2">
-              <div className="flex justify-between text-[10px] text-slate-400 mb-1 font-mono">
-                <span>{room!.totalCount}</span>
-                <span>{room!.targetCount}</span>
+              <div className="flex justify-between items-end text-sm font-bold text-slate-300 mb-2 font-mono px-1">
+                <span className="opacity-80">{room!.totalCount.toLocaleString()}</span>
+                {/* Percentage Display */}
+                <span className="text-emerald-400 text-xs bg-emerald-900/30 px-2 py-0.5 rounded-md border border-emerald-500/20">
+                    {progressPercent.toFixed(0)}%
+                </span>
+                <span className="opacity-80">{room!.targetCount.toLocaleString()}</span>
               </div>
-              <div className="relative w-full h-2 bg-slate-800 rounded-full overflow-hidden border border-slate-700/50 shadow-inner">
+              <div className="relative w-full h-3 bg-slate-800 rounded-full overflow-hidden border border-slate-700/50 shadow-inner">
                 <div 
                   className="absolute top-0 left-0 h-full bg-gradient-to-r from-emerald-500 to-emerald-300 rounded-full transition-all duration-500 ease-out shadow-[0_0_10px_rgba(16,185,129,0.5)]"
                   style={{ width: `${progressPercent}%` }}
@@ -337,6 +341,16 @@ export const Room: React.FC = () => {
           )}
         </div>
       </header>
+
+      {/* Floating "Remaining" Badge */}
+      {hasTarget && !room!.isCompleted && (
+          <div className="fixed bottom-24 left-6 z-20 pointer-events-none">
+              <div className="bg-slate-900/90 backdrop-blur-md border border-slate-700/50 shadow-[0_0_20px_rgba(0,0,0,0.5)] rounded-2xl p-4 flex flex-col items-center animate-slide-up transform hover:scale-105 transition-transform pointer-events-auto">
+                 <span className="text-[10px] text-slate-400 font-bold mb-1 tracking-wide">المتبقي</span>
+                 <span className="text-2xl font-mono text-amber-500 font-bold leading-none">{remaining.toLocaleString()}</span>
+              </div>
+          </div>
+      )}
 
       {/* --- Middle: Draggable Area --- */}
       <main className="flex-1 relative z-10 w-full overflow-hidden flex flex-col justify-center items-center py-4">
@@ -371,17 +385,14 @@ export const Room: React.FC = () => {
                 </Button>
              </div>
           </div>
-        ) : hasTarget ? (
-          <div className="flex flex-col items-center space-y-2 bg-slate-800/30 p-3 rounded-xl border border-white/5 backdrop-blur-sm mx-auto max-w-xs hover:bg-slate-800/50 transition-colors">
-             <span className="text-slate-400 text-xs font-bold tracking-wide font-display">المتبقي للإتمام</span>
-             <span className="text-3xl font-mono text-white font-bold tracking-tight drop-shadow-sm">{remaining.toLocaleString()}</span>
-          </div>
-        ) : (
+        ) : !hasTarget && (
           <p className="text-slate-500 text-xs font-medium bg-slate-900/50 py-2 px-4 rounded-full inline-block border border-slate-800">عدد مفتوح - تقبل الله منكم</p>
         )}
         
-        <div className="mt-4 text-[10px] text-slate-600 font-serif opacity-70">
-            وقف لله تعالى
+        <div className="mt-8 mb-2">
+            <span className="text-xl md:text-2xl text-emerald-600/80 font-calligraphy font-bold drop-shadow-sm opacity-90">
+                وقف لله تعالى
+            </span>
         </div>
       </footer>
 
@@ -443,10 +454,16 @@ export const Room: React.FC = () => {
 
                      <div className="border-t border-slate-700/50 my-2"></div>
 
-                     {/* Leave Room */}
-                     <Button variant="secondary" fullWidth onClick={handleLeaveRoom} className="border-slate-600 text-slate-300">
-                         مغادرة الغرفة
-                     </Button>
+                     {/* Leave Room Button - Small and Subtle */}
+                     <div className="flex justify-center pt-2">
+                        <button 
+                            onClick={handleLeaveRoom} 
+                            className="text-xs text-red-400/60 hover:text-red-400 transition-colors flex items-center gap-1 py-2 px-4 rounded-lg hover:bg-red-500/10"
+                        >
+                             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>
+                             مغادرة الغرفة
+                        </button>
+                     </div>
                  </div>
             </div>
           </>

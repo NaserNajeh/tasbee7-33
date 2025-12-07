@@ -68,7 +68,7 @@ export const useRoomRealtime = (roomCode: string | undefined) => {
   // Text to Speech Alert
   const playAlertSound = useCallback(() => {
     if ('speechSynthesis' in window) {
-      // Cancel any current speech
+      // CRITICAL: Cancel any current speech to start immediate alert
       window.speechSynthesis.cancel();
       
       const utterance = new SpeechSynthesisUtterance("لديك رسالة هامة في المسبحة");
@@ -133,9 +133,10 @@ export const useRoomRealtime = (roomCode: string | undefined) => {
       else if (event.data.type === 'ALERT_MESSAGE') {
          const msg = event.data.message;
          if (msg) {
-            setIncomingMessage(msg);
+            // Play sound immediately BEFORE setting state to ensure sync
             playAlertSound();
             vibratePhone([200, 100, 200, 100, 500]);
+            setIncomingMessage(msg);
          }
       }
     };
@@ -243,10 +244,10 @@ export const useRoomRealtime = (roomCode: string | undefined) => {
       message: text 
     });
     
-    // Show to self (Admin) immediately
-    setIncomingMessage(text);
+    // Show to self (Admin) immediately - trigger sound/vib FIRST
     playAlertSound();
     vibratePhone([200, 100, 200, 100, 500]);
+    setIncomingMessage(text);
   };
   
   const dismissMessage = () => {
