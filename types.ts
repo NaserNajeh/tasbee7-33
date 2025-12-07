@@ -8,8 +8,6 @@ export interface Room {
   totalCount: number;
   isCompleted: boolean;
   createdAt: number;
-  lastActiveAt: number; // For 48h cleanup
-  completedAt?: number; // For 10h cleanup
   ownerId: string;
 }
 
@@ -36,10 +34,8 @@ export interface MasbahaContextType {
   getRoomByCode: (code: string) => Room | undefined;
   getRoomParticipants: (code: string) => Participant[];
   incrementCount: (roomCode: string, participantId: string) => void;
-  bulkAddCount: (roomCode: string, participantId: string, amount: number) => void;
   isRoomOwner: (roomCode: string) => boolean;
   getMyParticipantId: (roomCode: string) => string | null;
   resetRoom: (roomCode: string) => void;
   updateRoomTarget: (roomCode: string, newTarget: number) => void;
-  leaveRoom: (roomCode: string, participantId: string) => void;
 }

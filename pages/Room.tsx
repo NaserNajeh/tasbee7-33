@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { Button } from '../components/Button';
 import { Input } from '../components/Input';
@@ -18,21 +18,13 @@ export const Room: React.FC = () => {
     currentParticipantId, 
     joinRoom, 
     incrementTasbeeh,
-    bulkAdd,
-    leaveRoom,
     isOwner,
     resetRoomCounters,
-    updateTarget,
-    isVibrationEnabled,
-    toggleVibration,
-    sendRoomMessage,
-    incomingMessage,
-    dismissMessage
+    updateTarget
   } = useRoomRealtime(roomCode);
 
   const [isStatsOpen, setIsStatsOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false); // For Owner
-  const [isUserSettingsOpen, setIsUserSettingsOpen] = useState(false); // For User Preferences
   const [joinName, setJoinName] = useState('');
   const [joinError, setJoinError] = useState('');
   
@@ -40,16 +32,8 @@ export const Room: React.FC = () => {
   const [imageScale, setImageScale] = useState(1);
   const [showImageControls, setShowImageControls] = useState(false);
 
-  // Masbaha Visual State
-  const [masbahaScale, setMasbahaScale] = useState(1);
-  const [isMasbahaLocked, setIsMasbahaLocked] = useState(false);
-
   // Edit Target State
   const [newTargetVal, setNewTargetVal] = useState('');
-  const [bulkAddVal, setBulkAddVal] = useState('');
-  
-  // Broadcast Message State
-  const [broadcastMsgVal, setBroadcastMsgVal] = useState('');
 
   // Copy Code State
   const [copied, setCopied] = useState(false);
@@ -77,14 +61,6 @@ export const Room: React.FC = () => {
     }
   };
 
-  const handleLeaveRoom = () => {
-    if (window.confirm('هل تريد مغادرة الغرفة وحذف سجلك منها؟')) {
-       leaveRoom();
-       setIsUserSettingsOpen(false);
-       navigate(AppRoute.HOME);
-    }
-  }
-
   // --- Actions for Owner ---
   const handleReset = () => {
     if(window.confirm('هل أنت متأكد من تصفير العداد للجميع؟ لا يمكن التراجع عن هذا الإجراء.')) {
@@ -102,29 +78,6 @@ export const Room: React.FC = () => {
       }
   };
 
-  const handleBulkAdd = () => {
-     const val = parseInt(bulkAddVal);
-     // Allow negative values for deduction, but not 0
-     if (!isNaN(val) && val !== 0) {
-        const action = val > 0 ? "إضافة" : "خصم";
-        const absVal = Math.abs(val);
-        if(window.confirm(`هل أنت متأكد من ${action} ${absVal} تسبيحة؟`)) {
-            bulkAdd(val);
-            setBulkAddVal('');
-            setIsSettingsOpen(false);
-        }
-     }
-  }
-
-  const handleSendMessage = () => {
-      if(broadcastMsgVal.trim()) {
-          sendRoomMessage(broadcastMsgVal.trim());
-          setBroadcastMsgVal('');
-          setIsSettingsOpen(false);
-          // Alert is now handled inside sendRoomMessage to show self-notification
-      }
-  }
-
   // --- Render Functions ---
 
   // 1. Loading / Not Found
@@ -132,8 +85,7 @@ export const Room: React.FC = () => {
   if (!room && roomCode) return (
     <div className="flex flex-col items-center justify-center min-h-[100dvh] text-center p-6 space-y-6">
       <div className="text-8xl mb-4 opacity-50 grayscale">📿</div>
-      <h2 className="text-3xl text-slate-300 font-display">الغرفة غير موجودة أو انتهت</h2>
-      <p className="text-slate-500">يتم حذف الغرف تلقائياً بعد 48 ساعة من عدم النشاط أو 10 ساعات من الاكتمال.</p>
+      <h2 className="text-3xl text-slate-300 font-display">الغرفة غير موجودة</h2>
       <Button variant="secondary" onClick={() => navigate(AppRoute.HOME)}>العودة للرئيسية</Button>
     </div>
   );
@@ -195,36 +147,34 @@ export const Room: React.FC = () => {
   return (
     <div className="fixed inset-0 flex flex-col h-[100dvh] max-w-lg mx-auto overflow-hidden">
       
-      {/* Alert Message Overlay */}
-      {incomingMessage && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 bg-black/80 backdrop-blur-sm animate-fade-in">
-           <div className="bg-[#1e293b] w-full max-w-sm rounded-3xl p-6 border-2 border-amber-500 shadow-[0_0_50px_rgba(245,158,11,0.2)] text-center space-y-4 animate-bounce-slow">
-              <div className="w-16 h-16 bg-amber-500/10 rounded-full flex items-center justify-center mx-auto text-amber-500">
-                 <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
-              </div>
-              <h3 className="text-2xl font-display text-white">تنبيه إداري</h3>
-              <p className="text-lg text-slate-300 leading-relaxed font-serif">
-                 {incomingMessage}
-              </p>
-              <Button fullWidth onClick={dismissMessage} className="bg-amber-600 hover:bg-amber-500 mt-4">
-                 علم
-              </Button>
-           </div>
-        </div>
-      )}
-
       {/* --- Top Bar: Navigation & Info --- */}
       <header className="px-5 pt-4 pb-2 shrink-0 z-30">
         {/* Navigation Bar */}
         <div className="flex justify-between items-center mb-4 bg-slate-800/30 backdrop-blur-md p-2 rounded-2xl border border-white/5 shadow-lg">
           <div className="flex gap-2">
-            {/* User Settings Button (Gear) */}
-            <button
-               onClick={() => setIsUserSettingsOpen(true)}
-               className="flex items-center gap-2 px-3 py-2 rounded-xl bg-slate-700/50 hover:bg-slate-600 text-slate-300 transition-colors border border-white/10"
-               title="خيارات العرض"
+            {/* Home Button */}
+            <button 
+              onClick={() => navigate(AppRoute.HOME)} 
+              className="flex items-center gap-2 px-3 py-2 rounded-xl bg-white/5 hover:bg-emerald-500/20 text-slate-300 hover:text-white transition-all border border-transparent hover:border-emerald-500/30"
+              title="الرئيسية"
             >
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
+                <polyline points="9 22 9 12 15 12 15 22"></polyline>
+              </svg>
+            </button>
+
+             {/* Create Button */}
+             <button 
+              onClick={() => navigate(AppRoute.CREATE)} 
+              className="flex items-center gap-2 px-3 py-2 rounded-xl bg-white/5 hover:bg-emerald-500/20 text-slate-300 hover:text-white transition-all border border-transparent hover:border-emerald-500/30"
+              title="أنشئ غرفتك"
+            >
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                <line x1="12" y1="8" x2="12" y2="16"></line>
+                <line x1="8" y1="12" x2="16" y2="12"></line>
+              </svg>
             </button>
           </div>
           
@@ -233,18 +183,17 @@ export const Room: React.FC = () => {
             {isOwner && (
                 <button
                     onClick={() => setIsSettingsOpen(true)}
-                    className="flex items-center gap-2 px-3 py-2 rounded-xl bg-amber-900/30 hover:bg-amber-900/50 text-amber-500 transition-colors border border-amber-500/20"
-                    title="إدارة الغرفة"
+                    className="flex items-center gap-2 px-3 py-2 rounded-xl bg-slate-700/50 hover:bg-slate-600 text-slate-300 transition-colors border border-white/10"
+                    title="إعدادات الغرفة"
                 >
-                     <span className="text-xs font-bold hidden sm:inline">الإدارة</span>
-                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 20h9"></path><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path></svg>
+                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
                 </button>
             )}
 
             {/* Stats Button */}
             <button 
                 onClick={() => setIsStatsOpen(true)}
-                className="flex items-center gap-2 px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-emerald-400 transition-colors border border-emerald-500/20 relative"
+                className="flex items-center gap-2 px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-gold-400 transition-colors border border-gold-500/20 relative"
             >
                 <span className="text-xs font-bold hidden sm:inline">المشاركين</span>
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -323,15 +272,11 @@ export const Room: React.FC = () => {
           {/* Progress Bar */}
           {hasTarget && (
             <div className="mx-4 pt-2">
-              <div className="flex justify-between items-end text-sm font-bold text-slate-300 mb-2 font-mono px-1">
-                <span className="opacity-80">{room!.totalCount.toLocaleString()}</span>
-                {/* Percentage Display */}
-                <span className="text-emerald-400 text-xs bg-emerald-900/30 px-2 py-0.5 rounded-md border border-emerald-500/20">
-                    {progressPercent.toFixed(0)}%
-                </span>
-                <span className="opacity-80">{room!.targetCount.toLocaleString()}</span>
+              <div className="flex justify-between text-[10px] text-slate-400 mb-1 font-mono">
+                <span>{room!.totalCount}</span>
+                <span>{room!.targetCount}</span>
               </div>
-              <div className="relative w-full h-3 bg-slate-800 rounded-full overflow-hidden border border-slate-700/50 shadow-inner">
+              <div className="relative w-full h-2 bg-slate-800 rounded-full overflow-hidden border border-slate-700/50 shadow-inner">
                 <div 
                   className="absolute top-0 left-0 h-full bg-gradient-to-r from-emerald-500 to-emerald-300 rounded-full transition-all duration-500 ease-out shadow-[0_0_10px_rgba(16,185,129,0.5)]"
                   style={{ width: `${progressPercent}%` }}
@@ -342,16 +287,6 @@ export const Room: React.FC = () => {
         </div>
       </header>
 
-      {/* Floating "Remaining" Badge */}
-      {hasTarget && !room!.isCompleted && (
-          <div className="fixed bottom-24 left-6 z-20 pointer-events-none">
-              <div className="bg-slate-900/90 backdrop-blur-md border border-slate-700/50 shadow-[0_0_20px_rgba(0,0,0,0.5)] rounded-2xl p-4 flex flex-col items-center animate-slide-up transform hover:scale-105 transition-transform pointer-events-auto">
-                 <span className="text-[10px] text-slate-400 font-bold mb-1 tracking-wide">المتبقي</span>
-                 <span className="text-2xl font-mono text-amber-500 font-bold leading-none">{remaining.toLocaleString()}</span>
-              </div>
-          </div>
-      )}
-
       {/* --- Middle: Draggable Area --- */}
       <main className="flex-1 relative z-10 w-full overflow-hidden flex flex-col justify-center items-center py-4">
         <DraggableMasbaha 
@@ -359,8 +294,6 @@ export const Room: React.FC = () => {
           personalCount={myStats?.personalCount || 0}
           isCompleted={room!.isCompleted}
           onTap={handleTap}
-          scale={masbahaScale}
-          isLocked={isMasbahaLocked}
         />
       </main>
 
@@ -385,14 +318,17 @@ export const Room: React.FC = () => {
                 </Button>
              </div>
           </div>
-        ) : !hasTarget && (
+        ) : hasTarget ? (
+          <div className="flex flex-col items-center space-y-2 bg-slate-800/30 p-3 rounded-xl border border-white/5 backdrop-blur-sm mx-auto max-w-xs hover:bg-slate-800/50 transition-colors">
+             <span className="text-slate-400 text-xs font-bold tracking-wide font-display">المتبقي للإتمام</span>
+             <span className="text-3xl font-mono text-white font-bold tracking-tight drop-shadow-sm">{remaining.toLocaleString()}</span>
+          </div>
+        ) : (
           <p className="text-slate-500 text-xs font-medium bg-slate-900/50 py-2 px-4 rounded-full inline-block border border-slate-800">عدد مفتوح - تقبل الله منكم</p>
         )}
         
-        <div className="mt-8 mb-2">
-            <span className="text-xl md:text-2xl text-emerald-600/80 font-calligraphy font-bold drop-shadow-sm opacity-90">
-                وقف لله تعالى
-            </span>
+        <div className="mt-4 text-[10px] text-slate-600 font-serif opacity-70">
+            وقف لله تعالى
         </div>
       </footer>
 
@@ -404,98 +340,15 @@ export const Room: React.FC = () => {
         currentParticipantId={currentParticipantId}
       />
 
-      {/* --- User Settings Sheet --- */}
-      {isUserSettingsOpen && (
-          <>
-            <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-40" onClick={() => setIsUserSettingsOpen(false)} />
-            <div className="fixed bottom-0 left-0 right-0 z-50 bg-[#1e293b] rounded-t-3xl border-t border-slate-700 p-6 animate-fade-in-up">
-                 <div className="w-12 h-1.5 bg-slate-600 rounded-full mx-auto mb-6"></div>
-                 <h3 className="text-xl font-display text-slate-200 mb-6 text-center">الإعدادات</h3>
-                 
-                 <div className="space-y-6">
-                    {/* Vibration Toggle */}
-                    <div className="flex justify-between items-center">
-                        <span className="text-slate-300">اهتزاز الهاتف</span>
-                        <button 
-                            onClick={toggleVibration}
-                            className={`w-12 h-6 rounded-full p-1 transition-colors ${isVibrationEnabled ? 'bg-emerald-500' : 'bg-slate-700'}`}
-                        >
-                            <div className={`w-4 h-4 rounded-full bg-white shadow-sm transition-transform ${isVibrationEnabled ? 'translate-x-0' : '-translate-x-6'}`}></div>
-                        </button>
-                    </div>
-
-                    {/* Lock Toggle */}
-                     <div className="flex justify-between items-center">
-                        <span className="text-slate-300">تثبيت الدائرة (منع السحب)</span>
-                        <button 
-                            onClick={() => setIsMasbahaLocked(!isMasbahaLocked)}
-                            className={`w-12 h-6 rounded-full p-1 transition-colors ${isMasbahaLocked ? 'bg-emerald-500' : 'bg-slate-700'}`}
-                        >
-                            <div className={`w-4 h-4 rounded-full bg-white shadow-sm transition-transform ${isMasbahaLocked ? 'translate-x-0' : '-translate-x-6'}`}></div>
-                        </button>
-                    </div>
-
-                    {/* Scale Slider */}
-                    <div className="space-y-2">
-                        <div className="flex justify-between text-sm text-slate-400">
-                             <span>حجم الدائرة</span>
-                             <span>{(masbahaScale * 100).toFixed(0)}%</span>
-                        </div>
-                        <input 
-                            type="range" 
-                            min="0.6" 
-                            max="1.5" 
-                            step="0.1" 
-                            value={masbahaScale} 
-                            onChange={(e) => setMasbahaScale(parseFloat(e.target.value))}
-                            className="w-full accent-emerald-500 h-2 bg-slate-600 rounded-lg appearance-none cursor-pointer"
-                        />
-                    </div>
-
-                     <div className="border-t border-slate-700/50 my-2"></div>
-
-                     {/* Leave Room Button - Small and Subtle */}
-                     <div className="flex justify-center pt-2">
-                        <button 
-                            onClick={handleLeaveRoom} 
-                            className="text-xs text-red-400/60 hover:text-red-400 transition-colors flex items-center gap-1 py-2 px-4 rounded-lg hover:bg-red-500/10"
-                        >
-                             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>
-                             مغادرة الغرفة
-                        </button>
-                     </div>
-                 </div>
-            </div>
-          </>
-      )}
-
-      {/* --- Owner Settings Sheet --- */}
+      {/* --- Settings Sheet (Owner Only) --- */}
       {isSettingsOpen && (
           <>
             <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-40" onClick={() => setIsSettingsOpen(false)} />
             <div className="fixed bottom-0 left-0 right-0 z-50 bg-[#1e293b] rounded-t-3xl border-t border-slate-700 p-6 animate-fade-in-up">
                  <div className="w-12 h-1.5 bg-slate-600 rounded-full mx-auto mb-6"></div>
-                 <h3 className="text-xl font-display text-amber-400 mb-6 text-center">إدارة الغرفة (المالك)</h3>
+                 <h3 className="text-xl font-display text-amber-400 mb-6 text-center">إعدادات الغرفة</h3>
                  
                  <div className="space-y-6">
-                     {/* Send Broadcast Message */}
-                     <div className="space-y-2">
-                        <label className="text-slate-300 text-sm">إرسال تنبيه للمشاركين</label>
-                        <div className="flex gap-2">
-                            <Input 
-                                placeholder="اكتب رسالتك هنا..." 
-                                value={broadcastMsgVal}
-                                onChange={(e) => setBroadcastMsgVal(e.target.value)}
-                            />
-                            <Button onClick={handleSendMessage} disabled={!broadcastMsgVal} className="whitespace-nowrap px-4 bg-amber-600 hover:bg-amber-500">
-                                إرسال
-                            </Button>
-                        </div>
-                        <p className="text-[10px] text-slate-500">سيظهر التنبيه كنافذة منبثقة مع قراءة صوتية للجميع.</p>
-                     </div>
-
-                     <div className="border-t border-slate-700/50"></div>
-
                      <div className="space-y-2">
                          <label className="text-slate-300 text-sm">تعديل الهدف المطلوب</label>
                          <div className="flex gap-2">
@@ -510,23 +363,6 @@ export const Room: React.FC = () => {
                                  حفظ
                              </Button>
                          </div>
-                     </div>
-
-                     <div className="space-y-2">
-                         <label className="text-slate-300 text-sm">إضافة يدوي / خصم (رقم سالب)</label>
-                         <div className="flex gap-2">
-                             <Input 
-                                type="number" 
-                                placeholder="العدد (مثال: 50 أو -10)" 
-                                value={bulkAddVal}
-                                onChange={(e) => setBulkAddVal(e.target.value)}
-                                className="text-center"
-                             />
-                             <Button variant="secondary" onClick={handleBulkAdd} disabled={!bulkAddVal || bulkAddVal === '0'} className="whitespace-nowrap px-6 text-emerald-400 border-emerald-500/30">
-                                 تنفيذ
-                             </Button>
-                         </div>
-                         <p className="text-[10px] text-slate-500">لإضافة عدد اكتب الرقم مباشرة، ولخصم عدد اكتب رقماً سالباً (مثلاً -10).</p>
                      </div>
                      
                      <div className="border-t border-slate-700/50 my-4"></div>

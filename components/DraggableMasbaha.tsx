@@ -5,17 +5,13 @@ interface DraggableMasbahaProps {
   personalCount: number;
   isCompleted: boolean;
   onTap: () => void;
-  scale?: number;
-  isLocked?: boolean;
 }
 
 export const DraggableMasbaha: React.FC<DraggableMasbahaProps> = ({
   totalCount,
   personalCount,
   isCompleted,
-  onTap,
-  scale = 1,
-  isLocked = false
+  onTap
 }) => {
   const buttonRef = useRef<HTMLButtonElement>(null);
   
@@ -49,9 +45,6 @@ export const DraggableMasbaha: React.FC<DraggableMasbahaProps> = ({
 
   const handlePointerMove = (e: React.PointerEvent) => {
     if (!isPointerDown.current) return;
-    
-    // If locked, we don't move the position, but we still track pointer down for the click logic
-    if (isLocked) return;
 
     const dx = e.clientX - dragStartPos.current.x;
     const dy = e.clientY - dragStartPos.current.y;
@@ -74,9 +67,10 @@ export const DraggableMasbaha: React.FC<DraggableMasbahaProps> = ({
     const distance = Math.sqrt(dx * dx + dy * dy);
 
     // If movement is small (less than 10px), consider it a TAP
-    // Also tap if locked (distance will be 0 effectively)
-    if (distance < 10 || isLocked) {
+    if (distance < 10) {
       onTap();
+      // Reset position to snap back slightly just for feel, or keep it there?
+      // Let's keep it where it is to feel "physical".
     }
     
     setIsDragging(false);
@@ -100,15 +94,14 @@ export const DraggableMasbaha: React.FC<DraggableMasbahaProps> = ({
           flex flex-col items-center justify-center
           transition-shadow duration-300
           focus:outline-none
-          ${isDragging && !isLocked ? 'scale-105 cursor-grabbing' : ''}
-          ${!isDragging && !isLocked ? 'cursor-grab' : ''}
-          ${isLocked ? 'cursor-pointer' : ''}
+          ${isDragging ? 'scale-105 cursor-grabbing' : 'scale-100 cursor-grab'}
           ${isCompleted 
             ? 'bg-emerald-900/20 border-4 border-emerald-500/50 cursor-default' 
             : 'bg-gradient-to-br from-slate-800 to-[#0f172a] shadow-[0_10px_40px_-10px_rgba(0,0,0,0.5)] border-[6px] border-slate-700/50 hover:border-amber-500/30 active:border-amber-400 active:shadow-[0_0_30px_rgba(245,158,11,0.2)]'}
         `}
         style={{
-          transform: `translate(${position.x}px, ${position.y}px) scale(${scale})`,
+          transform: `translate(${position.x}px, ${position.y}px)`,
+          // Important: hardware acceleration
           willChange: 'transform'
         }}
       >
@@ -125,22 +118,17 @@ export const DraggableMasbaha: React.FC<DraggableMasbahaProps> = ({
             <span className="text-xl font-bold font-display">مبارك!</span>
           </div>
         ) : (
-          <div className="pointer-events-none select-none flex flex-col items-center justify-center h-full pt-4">
-            <span className="text-xs text-slate-400 font-medium mb-1">المجموع</span>
-            <span className="text-6xl font-display font-bold text-transparent bg-clip-text bg-gradient-to-b from-white to-slate-300 tracking-tight leading-none pb-2">
+          <div className="pointer-events-none select-none flex flex-col items-center space-y-1">
+            <span className="text-xs text-slate-400 font-medium">المجموع</span>
+            <span className="text-6xl font-display font-bold text-transparent bg-clip-text bg-gradient-to-b from-white to-slate-300 tracking-tight">
               {totalCount.toLocaleString()}
             </span>
             
-            {/* Personal Balance - Redesigned to be smaller and cleaner */}
-            <div className="mt-3 flex items-center gap-2 px-3 py-1.5 rounded-full bg-slate-900/60 border border-emerald-500/20 backdrop-blur-md shadow-sm">
-              <div className="relative flex-shrink-0">
-                 <div className="w-2 h-2 rounded-full bg-amber-400 animate-pulse"></div>
-                 <div className="absolute inset-0 w-2 h-2 rounded-full bg-amber-400 animate-ping opacity-50"></div>
-              </div>
-              <div className="flex items-center gap-2 leading-none">
-                 <span className="text-[10px] text-slate-400 font-medium">رصيدك</span>
-                 <span className="font-mono font-bold text-amber-400 text-xl tracking-tight">{personalCount.toLocaleString()}</span>
-              </div>
+            <div className="mt-4 flex items-center gap-2 px-3 py-1 rounded-full bg-black/20 border border-white/5 backdrop-blur-sm">
+              <div className="w-2 h-2 rounded-full bg-amber-400 animate-pulse"></div>
+              <span className="text-xs text-amber-100/80 dir-rtl">
+                 رصيدك: <span className="font-mono font-bold text-amber-400 text-sm">{personalCount}</span>
+              </span>
             </div>
           </div>
         )}
@@ -150,7 +138,7 @@ export const DraggableMasbaha: React.FC<DraggableMasbahaProps> = ({
       {!isCompleted && (
         <div 
           className="absolute w-60 h-60 rounded-full bg-amber-500/5 blur-3xl -z-10 transition-transform duration-75"
-          style={{ transform: `translate(${position.x}px, ${position.y}px) scale(${scale})` }}
+          style={{ transform: `translate(${position.x}px, ${position.y}px)` }}
         />
       )}
     </div>
